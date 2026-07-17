@@ -4,15 +4,41 @@ services:
   zhiyin-music:
     image: qwex333/zhiyin-music:latest
     container_name: zhiyin-music
+
+    # ──────────────────────────────────────────────────────────────
+    # User identity (uid/gid) — common root cause of "failed to write tags" when scraping
+    # ──────────────────────────────────────────────────────────────
+    # The process inside the container must run as a user that has write permission
+    # on the mounted music directory.
+    # If host music files are owned by uid=1000 but the container runs as root or
+    # another user, TagLib will fail to save tags (logs show: failed to write tags /
+    # no write permission on file).
+    #
+    # Check the owner of the host music directory:
+    #   ls -ln /path/to/music | head
+    #   # Example output: -rw-r--r-- 1 1000 1000 ...  → uid=1000, gid=1000
+    #
+    # Example (uncomment and adjust based on your ls -ln result):
+    # user: "1000:1000"
+    # Or specify uid:gid:
+    # user: "1000:1000"   # uid:gid
+    #
+    # Alternatively, relax permissions on the host (pick one; prefer aligning with user:):
+    #   chown -R 1000:1000 /path/to/music
+    #   # or chmod -R u+w /path/to/music
+    #
+    # Note: after changing user, ./data must also be writable by that user,
+    # otherwise the database cannot be created.
+    # user: "1000:1000"
     
     ports:
       - "8080:8080"
     
     volumes:
-      # Music directory (read-only) - change to your actual path
+      # Music directory - change to your actual path
       # For additional paths, mount them here first, then add the docker path in config.toml
-      # Example: - /vol1/1000/Music:/music:ro
-      - ./music:/music:ro
+      # Example: - /vol1/1000/Music:/music
+      - ./music:/music
       
       # Database directory (persistent)
       - ./data:/data
